@@ -1,0 +1,15 @@
+{% extends 'base.html' %}{% block content %}
+<section class="panel" style="text-align:center"><div class="eyebrow">OWL STORE · AUTOMATIC CASHFREE CHECKOUT</div><h1>{{ order.order_no }}</h1><h2>₹{{ order.total|rupees }}</h2><p id="status-text" role="status" aria-live="polite">Opening Cashfree checkout…</p><button type="button" class="btn primary" id="pay">Open Cashfree Checkout</button><p id="gateway-error" role="alert"></p><p><a class="btn light" href="{{ url_for('terminal_payment', order_id=order.id) }}">Monitor payment status</a></p><p class="muted tiny">Only verified payment confirmation marks this bill paid.</p></section>
+<script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+<script>
+const sessionId={{ payment_session_id|tojson }};
+const mode={{ ('production' if cf_env == 'production' else 'sandbox')|tojson }};
+const monitor={{ url_for('terminal_payment', order_id=order.id)|tojson }};
+const button=document.getElementById('pay'), errorBox=document.getElementById('gateway-error');
+let running=false;
+async function openCheckout(){if(running)return;running=true;button.disabled=true;errorBox.textContent='';try{if(typeof Cashfree!=='function')throw Error('Cashfree SDK unavailable');const cf=Cashfree({mode});const result=await cf.checkout({paymentSessionId:sessionId,redirectTarget:'_self'});if(result&&result.error)throw Error(result.error.message||'Cashfree could not open');location.assign(monitor);}catch(e){errorBox.textContent='Automatic checkout could not open. Click the button to retry, or monitor the payment status.';button.disabled=false;running=false;}}
+button.addEventListener('click',openCheckout);
+// Browser restrictions may block checkout without a gesture; manual fallback remains available.
+window.addEventListener('load',()=>setTimeout(openCheckout,400));
+</script>
+{% endblock %}
